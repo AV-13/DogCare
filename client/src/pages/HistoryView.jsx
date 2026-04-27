@@ -28,31 +28,42 @@ export default function HistoryView() {
 
   return (
     <div>
-      <Link to={`/dogs/${dogId}`} style={{ display: 'inline-block', marginBottom: '1rem' }}>
-        ← Retour
-      </Link>
+      <Link to={`/dogs/${dogId}`} className="back-link">Retour</Link>
+
+      <header className="page-head">
+        <div className="page-head__left">
+          <span className="eyebrow">Mémoire</span>
+          <h1>
+            <span className="serif-italic">Historique.</span>
+          </h1>
+        </div>
+      </header>
 
       <div className="card">
-        <h1 className="page-title">Historique</h1>
-
         {loading ? (
-          <p>Chargement...</p>
+          <p className="loading-text">Chargement…</p>
         ) : events.length === 0 ? (
-          <p style={{ color: '#888' }}>Aucun événement passé.</p>
+          <div className="empty" style={{ border: 0, padding: '3rem 1rem', background: 'transparent' }}>
+            <div className="empty__mark">∅</div>
+            <h3>Pas encore d'histoire à raconter.</h3>
+            <p>Les événements passés apparaîtront ici.</p>
+          </div>
         ) : (
           <>
-            {events.map((event) => (
-              <EventRow key={event.id} event={event} />
-            ))}
+            <div className="events-list">
+              {events.map((event) => (
+                <EventRow key={event.id} event={event} />
+              ))}
+            </div>
 
             {pagination && pagination.totalPages > 1 && (
-              <div style={styles.pagination}>
+              <div className="pagination">
                 <button
                   className="btn btn-secondary"
                   disabled={page <= 1}
                   onClick={() => setPage((p) => p - 1)}
                 >
-                  Précédent
+                  ← Précédent
                 </button>
                 <span>
                   Page {pagination.page} / {pagination.totalPages}
@@ -62,7 +73,7 @@ export default function HistoryView() {
                   disabled={page >= pagination.totalPages}
                   onClick={() => setPage((p) => p + 1)}
                 >
-                  Suivant
+                  Suivant →
                 </button>
               </div>
             )}
@@ -72,15 +83,3 @@ export default function HistoryView() {
     </div>
   );
 }
-
-const styles = {
-  pagination: {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: '1rem',
-    marginTop: '1.5rem',
-    paddingTop: '1rem',
-    borderTop: '1px solid #eee',
-  },
-};

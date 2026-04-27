@@ -2,6 +2,13 @@ import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { createEvent } from '../services/eventService';
 
+const TYPES = [
+  { value: 'walk',    label: 'Balade',     color: 'var(--moss-2)' },
+  { value: 'vaccine', label: 'Vaccin',     color: 'var(--terracotta-2)' },
+  { value: 'meal',    label: 'Repas',      color: 'var(--ochre-2)' },
+  { value: 'vet',     label: 'Vétérinaire',color: 'var(--plum-2)' },
+];
+
 /**
  * Form page for creating a new event for a dog.
  *
@@ -18,11 +25,6 @@ export default function EventForm() {
   const [nextDueDate, setNextDueDate] = useState('');
   const [error, setError] = useState('');
 
-  /**
-   * Handle form submission: create the event and navigate back to the dog detail page.
-   *
-   * @param {React.FormEvent} e
-   */
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -45,23 +47,38 @@ export default function EventForm() {
 
   return (
     <div>
-      <Link to={`/dogs/${dogId}`} style={{ display: 'inline-block', marginBottom: '1rem' }}>
-        ← Retour
-      </Link>
+      <Link to={`/dogs/${dogId}`} className="back-link">Retour</Link>
 
-      <div className="card" style={{ maxWidth: 500 }}>
-        <h1 className="page-title">Ajouter un événement</h1>
+      <header className="page-head">
+        <div className="page-head__left">
+          <span className="eyebrow">Nouvelle entrée</span>
+          <h1>
+            Ajouter <span className="serif-italic">un événement.</span>
+          </h1>
+        </div>
+      </header>
+
+      <div className="card" style={{ maxWidth: 560 }}>
         {error && <p className="error-message">{error}</p>}
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label htmlFor="type">Type *</label>
-            <select id="type" value={type} onChange={(e) => setType(e.target.value)}>
-              <option value="walk">Balade</option>
-              <option value="vaccine">Vaccin</option>
-              <option value="meal">Repas</option>
-              <option value="vet">Vétérinaire</option>
-            </select>
+            <label>Type *</label>
+            <div className="type-pills" role="radiogroup">
+              {TYPES.map((t) => (
+                <button
+                  key={t.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={type === t.value}
+                  className={`type-pill ${type === t.value ? 'type-pill--active' : ''}`}
+                  onClick={() => setType(t.value)}
+                >
+                  <span className="type-pill__dot" style={{ background: t.color }} />
+                  {t.label}
+                </button>
+              ))}
+            </div>
           </div>
           <div className="form-group">
             <label htmlFor="title">Titre *</label>
@@ -70,6 +87,7 @@ export default function EventForm() {
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
+              placeholder="Vaccin rage, balade en forêt…"
               required
               maxLength={255}
             />
@@ -80,6 +98,7 @@ export default function EventForm() {
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
+              placeholder="Quelques notes pour s'en souvenir…"
               rows={3}
             />
           </div>
@@ -104,8 +123,8 @@ export default function EventForm() {
               />
             </div>
           )}
-          <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>
-            Ajouter
+          <button type="submit" className="btn btn-primary btn--block">
+            Consigner l'événement
           </button>
         </form>
       </div>

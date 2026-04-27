@@ -4,9 +4,8 @@ import { getUpcomingVaccines } from '../services/dogService';
 
 /**
  * Banner that displays upcoming or overdue vaccine reminders.
- * Fetches data from the API on mount.
  *
- * @returns {JSX.Element|null} The banner or null if no reminders
+ * @returns {JSX.Element|null}
  */
 export default function VaccineAlertBanner() {
   const [vaccines, setVaccines] = useState([]);
@@ -23,25 +22,28 @@ export default function VaccineAlertBanner() {
   const upcoming = vaccines.filter((v) => v.status === 'upcoming');
 
   return (
-    <div style={styles.wrapper}>
+    <div style={{ marginBottom: '2rem' }}>
       {overdue.length > 0 && (
         <div className="alert alert-danger">
           <strong>Vaccins en retard :</strong>
-          <ul style={styles.list}>
-            {overdue.map((v) => (
-              <li key={v.event_id}>
-                <Link to={`/dogs/${v.dog_id}`}>
-                  {v.dog_name} — {v.title} (retard de {Math.abs(v.days_remaining)} jour{Math.abs(v.days_remaining) > 1 ? 's' : ''})
-                </Link>
-              </li>
-            ))}
+          <ul>
+            {overdue.map((v) => {
+              const days = Math.abs(v.days_remaining);
+              return (
+                <li key={v.event_id}>
+                  <Link to={`/dogs/${v.dog_id}`}>
+                    {v.dog_name} — {v.title} (retard de {days} jour{days > 1 ? 's' : ''})
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}
       {upcoming.length > 0 && (
         <div className="alert alert-warning">
           <strong>Vaccins à venir :</strong>
-          <ul style={styles.list}>
+          <ul>
             {upcoming.map((v) => (
               <li key={v.event_id}>
                 <Link to={`/dogs/${v.dog_id}`}>
@@ -55,13 +57,3 @@ export default function VaccineAlertBanner() {
     </div>
   );
 }
-
-const styles = {
-  wrapper: {
-    marginBottom: '1.5rem',
-  },
-  list: {
-    margin: '0.5rem 0 0 1.2rem',
-    padding: 0,
-  },
-};

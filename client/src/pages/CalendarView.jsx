@@ -2,16 +2,18 @@ import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { getCalendar } from '../services/eventService';
 
-/**
- * Color mapping for event type dots on the calendar.
- *
- * @type {Record<string, string>}
- */
 const TYPE_COLORS = {
-  vaccine: '#3498db',
-  walk: '#2ecc71',
-  meal: '#f39c12',
-  vet: '#e74c3c',
+  vaccine: 'var(--terracotta)',
+  walk:    'var(--moss)',
+  meal:    'var(--ochre)',
+  vet:     'var(--plum)',
+};
+
+const TYPE_LABELS = {
+  vaccine: 'Vaccin',
+  walk:    'Balade',
+  meal:    'Repas',
+  vet:     'Vétérinaire',
 };
 
 const DAYS_OF_WEEK = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
@@ -38,36 +40,24 @@ export default function CalendarView() {
       .finally(() => setLoading(false));
   }, [dogId, currentMonth]);
 
-  /**
-   * Navigate to the previous month.
-   */
   const goToPrevMonth = () => {
     const [year, month] = currentMonth.split('-').map(Number);
     const prev = month === 1 ? `${year - 1}-12` : `${year}-${String(month - 1).padStart(2, '0')}`;
     setCurrentMonth(prev);
   };
 
-  /**
-   * Navigate to the next month.
-   */
   const goToNextMonth = () => {
     const [year, month] = currentMonth.split('-').map(Number);
     const next = month === 12 ? `${year + 1}-01` : `${year}-${String(month + 1).padStart(2, '0')}`;
     setCurrentMonth(next);
   };
 
-  /**
-   * Build the calendar grid cells for the current month.
-   *
-   * @returns {Array<{day: number|null, dateStr: string|null}>}
-   */
   const buildCalendarDays = () => {
     const [year, month] = currentMonth.split('-').map(Number);
     const firstDay = new Date(year, month - 1, 1);
     const lastDay = new Date(year, month, 0);
     const daysInMonth = lastDay.getDate();
 
-    // Monday = 0, Sunday = 6
     let startDay = firstDay.getDay() - 1;
     if (startDay < 0) startDay = 6;
 
@@ -92,34 +82,44 @@ export default function CalendarView() {
 
   return (
     <div>
-      <Link to={`/dogs/${dogId}`} style={{ display: 'inline-block', marginBottom: '1rem' }}>
-        ← Retour
-      </Link>
+      <Link to={`/dogs/${dogId}`} className="back-link">Retour</Link>
+
+      <header className="page-head">
+        <div className="page-head__left">
+          <span className="eyebrow">Vue mensuelle</span>
+          <h1>
+            <span className="serif-italic">Calendrier.</span>
+          </h1>
+        </div>
+      </header>
 
       <div className="card">
-        <div style={styles.header}>
-          <button onClick={goToPrevMonth} className="btn btn-secondary">←</button>
-          <h2 style={{ margin: 0, textTransform: 'capitalize' }}>{monthLabel}</h2>
-          <button onClick={goToNextMonth} className="btn btn-secondary">→</button>
+        <div className="cal-head">
+          <h2 className="cal-head__title">{monthLabel}</h2>
+          <div className="cal-head__nav">
+            <button onClick={goToPrevMonth} className="btn btn-secondary btn-sq" aria-label="Mois précédent">←</button>
+            <button onClick={goToNextMonth} className="btn btn-secondary btn-sq" aria-label="Mois suivant">→</button>
+          </div>
         </div>
 
         {loading ? (
-          <p>Chargement...</p>
+          <p className="loading-text">Chargement…</p>
         ) : (
-          <div style={styles.grid}>
+          <div className="cal-grid">
             {DAYS_OF_WEEK.map((d) => (
-              <div key={d} style={styles.dayHeader}>{d}</div>
+              <div key={d} className="cal-day-header">{d}</div>
             ))}
             {cells.map((cell, i) => (
-              <div key={i} style={styles.cell}>
+              <div key={i} className={`cal-cell ${cell.day ? '' : 'cal-cell--empty'}`}>
                 {cell.day && (
                   <>
-                    <span style={styles.dayNumber}>{cell.day}</span>
-                    <div style={styles.dots}>
+                    <span className="cal-cell__day">{cell.day}</span>
+                    <div className="cal-cell__events">
                       {(events[cell.dateStr] || []).map((ev) => (
                         <span
                           key={ev.id}
-                          style={{ ...styles.dot, backgroundColor: TYPE_COLORS[ev.type] || '#999' }}
+                          className="cal-dot"
+                          style={{ background: TYPE_COLORS[ev.type] || 'var(--ink-mute)' }}
                           title={ev.title}
                         />
                       ))}
@@ -131,11 +131,11 @@ export default function CalendarView() {
           </div>
         )}
 
-        <div style={styles.legend}>
+        <div className="cal-legend">
           {Object.entries(TYPE_COLORS).map(([type, color]) => (
-            <span key={type} style={styles.legendItem}>
-              <span style={{ ...styles.dot, backgroundColor: color }} />
-              {type === 'vaccine' ? 'Vaccin' : type === 'walk' ? 'Balade' : type === 'meal' ? 'Repas' : 'Vétérinaire'}
+            <span key={type} className="cal-legend__item">
+              <span className="cal-dot" style={{ background: color }} />
+              {TYPE_LABELS[type]}
             </span>
           ))}
         </div>
@@ -143,59 +143,3 @@ export default function CalendarView() {
     </div>
   );
 }
-
-const styles = {
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '1rem',
-  },
-  grid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(7, 1fr)',
-    gap: '2px',
-  },
-  dayHeader: {
-    textAlign: 'center',
-    fontWeight: 600,
-    padding: '0.5rem',
-    fontSize: '0.85rem',
-    color: '#666',
-  },
-  cell: {
-    minHeight: 60,
-    border: '1px solid #eee',
-    borderRadius: 4,
-    padding: '0.3rem',
-    position: 'relative',
-  },
-  dayNumber: {
-    fontSize: '0.85rem',
-    fontWeight: 500,
-  },
-  dots: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: 3,
-    marginTop: 4,
-  },
-  dot: {
-    display: 'inline-block',
-    width: 8,
-    height: 8,
-    borderRadius: '50%',
-  },
-  legend: {
-    display: 'flex',
-    gap: '1rem',
-    marginTop: '1rem',
-    flexWrap: 'wrap',
-  },
-  legendItem: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 4,
-    fontSize: '0.85rem',
-  },
-};

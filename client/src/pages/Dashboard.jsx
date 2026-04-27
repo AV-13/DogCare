@@ -20,43 +20,40 @@ export default function Dashboard() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <p>Chargement...</p>;
+  if (loading) return <p className="loading-text">Chargement…</p>;
 
   return (
     <div>
-      <div style={styles.header}>
-        <h1 className="page-title">Mes chiens</h1>
+      <header className="page-head">
+        <div className="page-head__left">
+          <span className="eyebrow">Votre album</span>
+          <h1>
+            Mes <span className="serif-italic">chiens.</span>
+          </h1>
+        </div>
         <Link to="/dogs/new" className="btn btn-primary">
           + Ajouter un chien
         </Link>
-      </div>
+      </header>
 
       <VaccineAlertBanner />
 
       {dogs.length === 0 ? (
-        <div className="card" style={styles.empty}>
-          <p>Vous n'avez pas encore ajouté de chien.</p>
-          <Link to="/dogs/new" className="btn btn-primary" style={{ marginTop: '0.5rem' }}>
+        <div className="empty">
+          <div className="empty__mark">＋</div>
+          <h3>Le carnet est encore vierge.</h3>
+          <p>Ajoutez votre premier compagnon pour commencer à consigner son histoire.</p>
+          <Link to="/dogs/new" className="btn btn-primary">
             Ajouter mon premier chien
           </Link>
         </div>
       ) : (
-        dogs.map((dog) => <DogCard key={dog.id} dog={dog} />)
+        <div className="dog-grid">
+          {dogs.map((dog, i) => (
+            <DogCard key={dog.id} dog={dog} index={i} />
+          ))}
+        </div>
       )}
     </div>
   );
 }
-
-const styles = {
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '1.5rem',
-  },
-  empty: {
-    textAlign: 'center',
-    padding: '3rem',
-    color: '#888',
-  },
-};

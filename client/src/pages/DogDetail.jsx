@@ -21,9 +21,6 @@ export default function DogDetail() {
       .finally(() => setLoading(false));
   }, [id, navigate]);
 
-  /**
-   * Delete the dog after user confirmation.
-   */
   const handleDelete = async () => {
     if (!window.confirm(`Supprimer ${dog.name} et tous ses événements ?`)) return;
     try {
@@ -34,99 +31,101 @@ export default function DogDetail() {
     }
   };
 
-  if (loading) return <p>Chargement...</p>;
+  if (loading) return <p className="loading-text">Chargement…</p>;
   if (!dog) return null;
+
+  const monogram = (dog.name || '?').trim().charAt(0).toUpperCase();
+  const ageYears = dog.birth_date
+    ? Math.floor((Date.now() - new Date(dog.birth_date).getTime()) / (365.25 * 24 * 3600 * 1000))
+    : null;
 
   return (
     <div>
-      <Link to="/" style={styles.backLink}>← Retour</Link>
+      <Link to="/" className="back-link">Retour</Link>
 
-      <div className="card" style={styles.infoCard}>
-        <div style={styles.topRow}>
-          <div style={styles.photoContainer}>
-            {dog.photo_url ? (
-              <img src={dog.photo_url} alt={dog.name} style={styles.photo} />
-            ) : (
-              <div style={styles.placeholder}>🐕</div>
+      <section className="dog-hero">
+        <div className="dog-hero__frame">
+          {dog.photo_url ? (
+            <img src={dog.photo_url} alt={dog.name} className="dog-hero__photo" />
+          ) : (
+            <div className="dog-hero__monogram-large">{monogram}</div>
+          )}
+          <div className="dog-hero__caption">{dog.breed || 'Chien de famille'}</div>
+        </div>
+
+        <div className="dog-hero__info">
+          <span className="eyebrow">Fiche compagnon</span>
+          <h1>{dog.name}</h1>
+
+          <div className="stats">
+            {dog.breed && (
+              <div>
+                <div className="stat__label">Race</div>
+                <div className="stat__value">{dog.breed}</div>
+              </div>
             )}
-          </div>
-          <div style={styles.details}>
-            <h1 style={{ margin: 0 }}>{dog.name}</h1>
-            {dog.breed && <p style={styles.meta}>Race : {dog.breed}</p>}
             {dog.birth_date && (
-              <p style={styles.meta}>
-                Naissance : {new Date(dog.birth_date).toLocaleDateString('fr-FR')}
-              </p>
+              <div>
+                <div className="stat__label">Naissance</div>
+                <div className="stat__value">
+                  {new Date(dog.birth_date).toLocaleDateString('fr-FR')}
+                </div>
+              </div>
             )}
-            {dog.weight_kg && <p style={styles.meta}>Poids : {dog.weight_kg} kg</p>}
+            {ageYears !== null && (
+              <div>
+                <div className="stat__label">Âge</div>
+                <div className="stat__value">
+                  {ageYears} {ageYears > 1 ? 'ans' : 'an'}
+                </div>
+              </div>
+            )}
+            {dog.weight_kg && (
+              <div>
+                <div className="stat__label">Poids</div>
+                <div className="stat__value">{dog.weight_kg} kg</div>
+              </div>
+            )}
+          </div>
+
+          <div className="action-row">
+            <Link to={`/dogs/${dog.id}/events/new`} className="btn btn-primary">
+              + Événement
+            </Link>
+            <Link to={`/dogs/${dog.id}/calendar`} className="btn btn-secondary">
+              Calendrier
+            </Link>
+            <Link to={`/dogs/${dog.id}/history`} className="btn btn-secondary">
+              Historique
+            </Link>
+            <Link to={`/dogs/${dog.id}/edit`} className="btn btn-secondary">
+              Modifier
+            </Link>
+            <button onClick={handleDelete} className="btn btn-danger">
+              Supprimer
+            </button>
           </div>
         </div>
+      </section>
 
-        <div style={styles.actions}>
-          <Link to={`/dogs/${dog.id}/edit`} className="btn btn-primary">Modifier</Link>
-          <Link to={`/dogs/${dog.id}/events/new`} className="btn btn-primary">+ Événement</Link>
-          <Link to={`/dogs/${dog.id}/calendar`} className="btn btn-secondary">Calendrier</Link>
-          <Link to={`/dogs/${dog.id}/history`} className="btn btn-secondary">Historique</Link>
-          <button onClick={handleDelete} className="btn btn-danger">Supprimer</button>
-        </div>
+      <div className="section-head">
+        <h2 className="section-head__title">Événements récents</h2>
+        <span className="rule-ornament" />
       </div>
 
       <div className="card">
-        <h2 style={{ marginBottom: '1rem' }}>Événements récents</h2>
         {dog.recent_events && dog.recent_events.length > 0 ? (
-          dog.recent_events.map((event) => <EventRow key={event.id} event={event} />)
+          <div className="events-list">
+            {dog.recent_events.map((event) => (
+              <EventRow key={event.id} event={event} />
+            ))}
+          </div>
         ) : (
-          <p style={{ color: '#888' }}>Aucun événement pour le moment.</p>
+          <p style={{ color: 'var(--ink-mute)', textAlign: 'center', padding: '1rem 0' }}>
+            Aucun événement pour le moment.
+          </p>
         )}
       </div>
     </div>
   );
 }
-
-const styles = {
-  backLink: {
-    display: 'inline-block',
-    marginBottom: '1rem',
-    fontSize: '0.95rem',
-  },
-  infoCard: {
-    marginBottom: '1rem',
-  },
-  topRow: {
-    display: 'flex',
-    gap: '1.5rem',
-    alignItems: 'center',
-    marginBottom: '1rem',
-  },
-  photoContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: '12px',
-    overflow: 'hidden',
-    flexShrink: 0,
-    backgroundColor: '#eee',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  photo: {
-    width: '100%',
-    height: '100%',
-    objectFit: 'cover',
-  },
-  placeholder: {
-    fontSize: '3rem',
-  },
-  details: {
-    flex: 1,
-  },
-  meta: {
-    margin: '0.3rem 0',
-    color: '#555',
-  },
-  actions: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: '0.5rem',
-  },
-};

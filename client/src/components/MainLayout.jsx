@@ -11,9 +11,9 @@ export default function MainLayout() {
   return (
     <>
       <Navbar />
-      <div className="container">
+      <main className="container page">
         <Outlet />
-      </div>
+      </main>
     </>
   );
 }

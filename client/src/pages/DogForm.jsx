@@ -4,7 +4,6 @@ import { createDog, updateDog, getDog, uploadPhoto } from '../services/dogServic
 
 /**
  * Form page for creating or editing a dog.
- * Detects edit mode when an :id param is present in the URL.
  *
  * @returns {JSX.Element}
  */
@@ -35,11 +34,6 @@ export default function DogForm() {
       .finally(() => setLoading(false));
   }, [id, isEdit, navigate]);
 
-  /**
-   * Handle form submission: create or update the dog, then upload photo if provided.
-   *
-   * @param {React.FormEvent} e
-   */
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -69,16 +63,23 @@ export default function DogForm() {
     }
   };
 
-  if (loading) return <p>Chargement...</p>;
+  if (loading) return <p className="loading-text">Chargement…</p>;
 
   return (
     <div>
-      <Link to={isEdit ? `/dogs/${id}` : '/'} style={{ display: 'inline-block', marginBottom: '1rem' }}>
-        ← Retour
-      </Link>
+      <Link to={isEdit ? `/dogs/${id}` : '/'} className="back-link">Retour</Link>
 
-      <div className="card" style={{ maxWidth: 500 }}>
-        <h1 className="page-title">{isEdit ? 'Modifier le chien' : 'Ajouter un chien'}</h1>
+      <header className="page-head">
+        <div className="page-head__left">
+          <span className="eyebrow">{isEdit ? 'Édition' : 'Nouveau chapitre'}</span>
+          <h1>
+            {isEdit ? 'Modifier ' : 'Ajouter '}
+            <span className="serif-italic">un chien.</span>
+          </h1>
+        </div>
+      </header>
+
+      <div className="card" style={{ maxWidth: 560 }}>
         {error && <p className="error-message">{error}</p>}
 
         <form onSubmit={handleSubmit}>
@@ -89,6 +90,7 @@ export default function DogForm() {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              placeholder="Rex"
               required
               maxLength={100}
             />
@@ -100,6 +102,7 @@ export default function DogForm() {
               type="text"
               value={breed}
               onChange={(e) => setBreed(e.target.value)}
+              placeholder="Berger Allemand"
               maxLength={100}
             />
           </div>
@@ -122,6 +125,7 @@ export default function DogForm() {
               max="200"
               value={weightKg}
               onChange={(e) => setWeightKg(e.target.value)}
+              placeholder="28.5"
             />
           </div>
           <div className="form-group">
@@ -132,9 +136,10 @@ export default function DogForm() {
               accept="image/jpeg,image/png,image/webp"
               onChange={(e) => setPhoto(e.target.files[0])}
             />
+            <small>JPEG, PNG ou WebP · 5 Mo max</small>
           </div>
-          <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>
-            {isEdit ? 'Enregistrer' : 'Ajouter'}
+          <button type="submit" className="btn btn-primary btn--block">
+            {isEdit ? 'Enregistrer les changements' : 'Ajouter au carnet'}
           </button>
         </form>
       </div>

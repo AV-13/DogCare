@@ -1,8 +1,3 @@
-/**
- * Map of event types to their display labels and CSS badge classes.
- *
- * @type {Record<string, {label: string, badgeClass: string}>}
- */
 const TYPE_CONFIG = {
   vaccine: { label: 'Vaccin', badgeClass: 'badge-vaccine' },
   walk: { label: 'Balade', badgeClass: 'badge-walk' },
@@ -10,60 +5,39 @@ const TYPE_CONFIG = {
   vet: { label: 'Vétérinaire', badgeClass: 'badge-vet' },
 };
 
+const FR_MONTHS = [
+  'janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin',
+  'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.',
+];
+
 /**
- * Displays a single event as a row with type badge, title, date, and description.
+ * Displays a single event as an editorial-style row with date stamp, badge,
+ * title and optional description.
  *
  * @param {Object} props
- * @param {Object} props.event - The event object
- * @param {string} props.event.id - Event UUID
- * @param {string} props.event.type - Event type
- * @param {string} props.event.title - Event title
- * @param {string} props.event.event_date - Event date (ISO string)
- * @param {string} [props.event.description] - Optional description
- * @returns {JSX.Element}
+ * @param {Object} props.event
  */
 export default function EventRow({ event }) {
   const config = TYPE_CONFIG[event.type] || { label: event.type, badgeClass: '' };
-  const date = new Date(event.event_date).toLocaleDateString('fr-FR', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  const date = new Date(event.event_date);
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = FR_MONTHS[date.getMonth()];
+  const year = date.getFullYear();
+  const time = date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
   return (
-    <div style={styles.row}>
-      <span className={`badge ${config.badgeClass}`}>{config.label}</span>
-      <div style={styles.content}>
-        <strong>{event.title}</strong>
-        <span style={styles.date}>{date}</span>
-        {event.description && <p style={styles.desc}>{event.description}</p>}
+    <div className="event-row">
+      <div className="event-row__date">
+        <span className="event-row__date-day">{day}</span>
+        <span className="event-row__date-monthtime">{month} {year} · {time}</span>
+      </div>
+      <div className="event-row__body">
+        <div className="event-row__meta">
+          <span className={`badge ${config.badgeClass}`}>{config.label}</span>
+        </div>
+        <h4 className="event-row__title">{event.title}</h4>
+        {event.description && <p className="event-row__desc">{event.description}</p>}
       </div>
     </div>
   );
 }
-
-const styles = {
-  row: {
-    display: 'flex',
-    alignItems: 'flex-start',
-    gap: '0.8rem',
-    padding: '0.8rem 0',
-    borderBottom: '1px solid #eee',
-  },
-  content: {
-    flex: 1,
-  },
-  date: {
-    display: 'block',
-    fontSize: '0.85rem',
-    color: '#888',
-    marginTop: '0.15rem',
-  },
-  desc: {
-    margin: '0.3rem 0 0',
-    fontSize: '0.9rem',
-    color: '#555',
-  },
-};
