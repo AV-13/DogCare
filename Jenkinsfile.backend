@@ -1,0 +1,137 @@
+// DogCare — backend pipeline
+//
+// Required Jenkins setup (one-time):
+//   1. Manage Credentials → add an SSH Username with Private Key:
+//        ID:        dogcare-backend-ssh
+//        Username:  azureuser
+//        Key:       paste the contents of backend_key.pem
+//   2. The pipeline reads the backend host from the BACKEND_HOST parameter
+//      (set a default value when configuring the job, or pass at build time).
+//   3. Recommended plugins: SSH Agent, Pipeline Utility Steps.
+
+pipeline {
+  agent any
+
+  parameters {
+    string(name: 'BACKEND_HOST', defaultValue: '20.0.0.0', description: 'Public IP of the backend VM')
+    string(name: 'API_PORT',     defaultValue: '3000',     description: 'Port the API listens on')
+  }
+
+  environment {
+    SSH_USER = 'azureuser'
+    REMOTE_DIR = '/srv/dogcare-api'
+    NODE_VERSION = '20'
+  }
+
+  options {
+    timeout(time: 20, unit: 'MINUTES')
+    timestamps()
+    ansiColor('xterm')
+  }
+
+  stages {
+    stage('Checkout') {
+      steps {
+        checkout scm
+      }
+    }
+
+    stage('Install') {
+      steps {
+        dir('server') {
+          sh 'npm ci'
+        }
+      }
+    }
+
+    stage('Lint') {
+      steps {
+        dir('server') {
+          sh 'npx eslint src/'
+        }
+      }
+    }
+
+    stage('Test') {
+      // Tests need a Postgres. We spin up a throwaway container for the duration.
+      steps {
+        script {
+          sh '''
+            docker rm -f dogcare-ci-db 2>/dev/null || true
+            docker run -d --name dogcare-ci-db \
+              -e POSTGRES_DB=dogcare_test \
+              -e POSTGRES_USER=postgres \
+              -e POSTGRES_PASSWORD=postgres \
+              -p 55432:5432 postgres:15-alpine
+            for i in $(seq 1 20); do
+              docker exec dogcare-ci-db pg_isready -U postgres && break
+              sleep 1
+            done
+          '''
+        }
+        dir('server') {
+          withEnv([
+            'DB_HOST=localhost',
+            'DB_PORT=55432',
+            'DB_NAME=dogcare_test',
+            'DB_USER=postgres',
+            'DB_PASSWORD=postgres',
+            'JWT_SECRET=ci-secret',
+            'JWT_EXPIRES_IN=1h',
+          ]) {
+            sh 'npm test'
+          }
+        }
+      }
+      post {
+        always {
+          sh 'docker rm -f dogcare-ci-db 2>/dev/null || true'
+        }
+      }
+    }
+
+    stage('Deploy') {
+      when {
+        anyOf {
+          branch 'main'
+          expression { return params.FORCE_DEPLOY == 'true' }
+        }
+      }
+      steps {
+        sshagent(credentials: ['dogcare-backend-ssh']) {
+          sh '''
+            set -e
+            SSH_OPTS="-o StrictHostKeyChecking=accept-new -o IdentitiesOnly=yes"
+
+            echo "▶ Streaming server/ to ${BACKEND_HOST} via tar…"
+            tar -czf - \
+              --exclude='node_modules' --exclude='uploads/dogs/*' \
+              --exclude='uploads/sample-dogs' \
+              --exclude='.env' --exclude='.env.test' \
+              --exclude='tests' --exclude='scripts' --exclude='coverage' \
+              -C server . \
+              | ssh $SSH_OPTS "${SSH_USER}@${BACKEND_HOST}" \
+                  "sudo mkdir -p ${REMOTE_DIR}/uploads/dogs \
+                   && sudo chown -R \$USER:\$USER ${REMOTE_DIR} \
+                   && tar -xzf - -C ${REMOTE_DIR}"
+
+            echo "▶ Installing prod dependencies on remote…"
+            ssh $SSH_OPTS "${SSH_USER}@${BACKEND_HOST}" "cd ${REMOTE_DIR} && npm ci --omit=dev"
+
+            echo "▶ Restarting API…"
+            ssh $SSH_OPTS "${SSH_USER}@${BACKEND_HOST}" "sudo systemctl restart dogcare-api && sleep 2 && sudo systemctl is-active dogcare-api"
+
+            echo "▶ Smoke check…"
+            curl -fsS --max-time 10 "http://${BACKEND_HOST}:${API_PORT}/api/auth/login" \
+              -X POST -H 'Content-Type: application/json' -d '{}' || true
+          '''
+        }
+      }
+    }
+  }
+
+  post {
+    success { echo '✓ Backend pipeline OK.' }
+    failure { echo '✗ Backend pipeline failed.' }
+  }
+}

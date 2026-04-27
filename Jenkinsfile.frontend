@@ -1,0 +1,103 @@
+// DogCare — frontend pipeline
+//
+// Required Jenkins setup (one-time):
+//   1. Manage Credentials → add an SSH Username with Private Key:
+//        ID:        dogcare-frontend-ssh
+//        Username:  azureuser
+//        Key:       paste the contents of frontend_key.pem
+//   2. Set the FRONTEND_HOST default in the job parameters, or pass at build time.
+
+pipeline {
+  agent any
+
+  parameters {
+    string(name: 'FRONTEND_HOST', defaultValue: '20.0.0.0', description: 'Public IP of the frontend VM')
+  }
+
+  environment {
+    SSH_USER   = 'azureuser'
+    REMOTE_DIR = '/var/www/dogcare/dist'
+  }
+
+  options {
+    timeout(time: 15, unit: 'MINUTES')
+    timestamps()
+    ansiColor('xterm')
+  }
+
+  stages {
+    stage('Checkout') {
+      steps {
+        checkout scm
+      }
+    }
+
+    stage('Install') {
+      steps {
+        dir('client') {
+          sh 'npm ci'
+        }
+      }
+    }
+
+    stage('Lint') {
+      steps {
+        dir('client') {
+          sh 'npx eslint src/'
+        }
+      }
+    }
+
+    stage('Test') {
+      steps {
+        dir('client') {
+          sh 'npm test -- --run'
+        }
+      }
+    }
+
+    stage('Build') {
+      steps {
+        dir('client') {
+          sh 'npm run build'
+        }
+        archiveArtifacts artifacts: 'client/dist/**', fingerprint: true
+      }
+    }
+
+    stage('Deploy') {
+      when {
+        anyOf {
+          branch 'main'
+          expression { return params.FORCE_DEPLOY == 'true' }
+        }
+      }
+      steps {
+        sshagent(credentials: ['dogcare-frontend-ssh']) {
+          sh '''
+            set -e
+            SSH_OPTS="-o StrictHostKeyChecking=accept-new -o IdentitiesOnly=yes"
+
+            echo "▶ Streaming client/dist/ to ${FRONTEND_HOST} via tar…"
+            tar -czf - -C client/dist . \
+              | ssh $SSH_OPTS "${SSH_USER}@${FRONTEND_HOST}" \
+                  "sudo rm -rf ${REMOTE_DIR}/* \
+                   && sudo chown -R \$USER:\$USER /var/www/dogcare \
+                   && tar -xzf - -C ${REMOTE_DIR}"
+
+            echo "▶ Reloading nginx…"
+            ssh $SSH_OPTS "${SSH_USER}@${FRONTEND_HOST}" "sudo nginx -t && sudo systemctl reload nginx"
+
+            echo "▶ Smoke check…"
+            curl -fsS --max-time 10 -o /dev/null -w 'HTTP %{http_code}\n' "http://${FRONTEND_HOST}/"
+          '''
+        }
+      }
+    }
+  }
+
+  post {
+    success { echo '✓ Frontend pipeline OK.' }
+    failure { echo '✗ Frontend pipeline failed.' }
+  }
+}

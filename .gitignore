@@ -9,6 +9,13 @@ dist/
 .env.local
 .env.*.local
 
+# SSH / cloud credentials
+*.pem
+*.key
+
+# Deploy config
+infra/.env.deploy
+
 # IDE
 .idea/
 .vscode/

@@ -1,0 +1,20 @@
+# Postgres for the production backend VM.
+# Bound to 127.0.0.1 only so it is never reachable from the internet.
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: dogcare-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: dogcare
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - dogcare_pgdata:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+
+volumes:
+  dogcare_pgdata:
