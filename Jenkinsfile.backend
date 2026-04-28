@@ -54,15 +54,26 @@ pipeline {
 
     stage('Test') {
       // Tests need a Postgres. We spin up a throwaway container for the duration.
+      // To stay reachable when Jenkins itself runs in a container (sibling
+      // containers via mounted docker.sock), we attach the DB to Jenkins' own
+      // network and address it by container name.
       steps {
         script {
           sh '''
             docker rm -f dogcare-ci-db 2>/dev/null || true
-            docker run -d --name dogcare-ci-db \
+            JENKINS_NET=$(docker inspect -f '{{range $k,$v := .NetworkSettings.Networks}}{{$k}} {{end}}' "$(hostname)" 2>/dev/null | awk '{print $1}')
+            if [ -n "$JENKINS_NET" ]; then
+              echo "▶ Attaching dogcare-ci-db to Jenkins network: $JENKINS_NET"
+              NETWORK_ARG="--network $JENKINS_NET"
+            else
+              echo "▶ No Jenkins network detected — falling back to default bridge + published port"
+              NETWORK_ARG="-p 55432:5432"
+            fi
+            docker run -d --name dogcare-ci-db $NETWORK_ARG \
               -e POSTGRES_DB=dogcare_test \
               -e POSTGRES_USER=postgres \
               -e POSTGRES_PASSWORD=postgres \
-              -p 55432:5432 postgres:15-alpine
+              postgres:15-alpine
             for i in $(seq 1 20); do
               docker exec dogcare-ci-db pg_isready -U postgres && break
               sleep 1
@@ -71,8 +82,8 @@ pipeline {
         }
         dir('server') {
           withEnv([
-            'DB_HOST=localhost',
-            'DB_PORT=55432',
+            'DB_HOST=dogcare-ci-db',
+            'DB_PORT=5432',
             'DB_NAME=dogcare_test',
             'DB_USER=postgres',
             'DB_PASSWORD=postgres',
